@@ -262,6 +262,11 @@ class SoundSynth {
     this.playTone(180, 'sawtooth', 0.4, 0);
     this.playTone(220, 'sawtooth', 0.4, 0.05);
   }
+
+  playWrong() {
+    this.playTone(250, 'sawtooth', 0.2, 0);
+    this.playTone(180, 'sawtooth', 0.3, 0.12);
+  }
 }
 
 const audio = new SoundSynth();
@@ -591,15 +596,20 @@ function renderScoreboard() {
 
     card.innerHTML = `
       <div class="house-info">
-        <span class="house-name" onclick="triggerWinnerCelebration('${house.id}')" style="cursor: pointer;" title="Click to launch Winner Animation">${escapeHtml(house.name)}</span>
+        <span class="house-name" onclick="triggerWinnerCelebration('${house.id}')" style="cursor: pointer;" title="Click to launch Winner Animation">
+          ${escapeHtml(house.name)}
+          <span class="house-trophy-icon" title="Celebrate Winner">🏆</span>
+        </span>
         ${membersSubtitle}
-        <span class="house-score-val" id="score-val-${house.id}">${house.score}</span>
+        <span class="house-score-val" id="score-val-${house.id}" onclick="promptEditScore('${house.id}')" title="Click to manually edit or remove points" style="cursor: pointer;">${house.score}</span>
       </div>
       <div class="score-quick-btns">
-        <button class="score-btn" onclick="adjustScore('${house.id}', 15)">+15</button>
-        <button class="score-btn" onclick="adjustScore('${house.id}', 10)">+10</button>
-        <button class="score-btn" onclick="adjustScore('${house.id}', 5)">+5</button>
-        <button class="score-btn" onclick="triggerWinnerCelebration('${house.id}')" title="Announce ${escapeHtml(house.name)} Winner">🏆</button>
+        <button class="score-btn score-btn-plus" onclick="adjustScore('${house.id}', 15)" title="Add +15 Points to ${escapeHtml(house.name)}">+15</button>
+        <button class="score-btn score-btn-plus" onclick="adjustScore('${house.id}', 10)" title="Add +10 Points to ${escapeHtml(house.name)}">+10</button>
+        <button class="score-btn score-btn-plus" onclick="adjustScore('${house.id}', 5)" title="Add +5 Points to ${escapeHtml(house.name)}">+5</button>
+        <button class="score-btn score-btn-minus" onclick="adjustScore('${house.id}', -15)" title="Remove -15 Points from ${escapeHtml(house.name)}">-15</button>
+        <button class="score-btn score-btn-minus" onclick="adjustScore('${house.id}', -10)" title="Remove -10 Points from ${escapeHtml(house.name)}">-10</button>
+        <button class="score-btn score-btn-minus" onclick="adjustScore('${house.id}', -5)" title="Remove -5 Points from ${escapeHtml(house.name)}">-5</button>
       </div>
     `;
     elements.scoreboardContainer.appendChild(card);
@@ -611,17 +621,68 @@ window.adjustScore = function(houseId, delta) {
   const house = state.houses.find(h => h.id === houseId);
   if (house) {
     house.score += delta;
-    if (delta > 0) audio.playCorrect();
+    if (delta > 0) {
+      audio.playCorrect();
+      showToast(`+${delta} Pts awarded to ${house.name}!`, '🎯');
+    } else if (delta < 0) {
+      audio.playWrong();
+      showToast(`${delta} Pts removed from ${house.name}!`, '⚠️');
+    }
     saveState();
     
     // Pulse animation
     const valEl = document.getElementById(`score-val-${houseId}`);
     if (valEl) {
       valEl.textContent = house.score;
-      valEl.classList.remove('pulse');
+      valEl.classList.remove('pulse', 'pulse-minus');
       void valEl.offsetWidth; // trigger reflow
-      valEl.classList.add('pulse');
+      valEl.classList.add(delta < 0 ? 'pulse-minus' : 'pulse');
     }
+
+    // Sync input in setup screen if it's currently open
+    const inputEl = document.getElementById(`input-house-score-${houseId}`);
+    if (inputEl) {
+      inputEl.value = house.score;
+    }
+  }
+};
+
+// DIRECT SCORE EDIT / REMOVAL PROMPT
+window.promptEditScore = function(houseId) {
+  const house = state.houses.find(h => h.id === houseId);
+  if (!house) return;
+  const input = prompt(
+    `Adjust Score for ${house.name}:\n` +
+    `Current Score: ${house.score} Pts\n\n` +
+    `• Enter a new score (e.g. 50)\n` +
+    `• Or enter points to add / remove (e.g. -10 or +5):`,
+    house.score
+  );
+  if (input === null) return;
+  const trimmed = input.trim();
+  if (!trimmed) return;
+
+  if (trimmed.startsWith('-') || trimmed.startsWith('+')) {
+    const delta = parseInt(trimmed, 10);
+    if (!isNaN(delta) && delta !== 0) {
+      adjustScore(houseId, delta);
+    }
+  } else {
+    const newScore = parseInt(trimmed, 10);
+    if (!isNaN(newScore)) {
+      const delta = newScore - house.score;
+      adjustScore(houseId, delta);
+    }
+  }
+};
+
+window.setHouseScore = function(houseId, val) {
+  const house = state.houses.find(h => h.id === houseId);
+  if (house) {
+    const newScore = parseInt(val, 10);
+    const scoreVal = isNaN(newScore) ? 0 : newScore;
+    const delta = scoreVal - house.score;
+    adjustScore(houseId, delta);
   }
 };
 
@@ -638,10 +699,20 @@ function renderHousesEditor() {
         <label class="form-label">House Name</label>
         <input type="text" class="form-input" value="${escapeHtml(house.name)}" onchange="updateHouseName('${house.id}', this.value)">
       </div>
+      <div class="form-group" style="margin-bottom: 8px;">
+        <label class="form-label">Current Score / अङ्क</label>
+        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+          <input type="number" id="input-house-score-${house.id}" class="form-input" value="${house.score}" onchange="setHouseScore('${house.id}', this.value)" style="width: 85px;">
+          <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="adjustScore('${house.id}', 10)">+10</button>
+          <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="adjustScore('${house.id}', 5)">+5</button>
+          <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="adjustScore('${house.id}', -5)">-5</button>
+          <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="adjustScore('${house.id}', -10)">-10</button>
+        </div>
+      </div>
       <div class="color-picker-row">
         <input type="color" value="${house.color}" onchange="updateHouseColor('${house.id}', this.value)">
         <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted);">Theme Color</span>
-        <button class="btn btn-outline" style="margin-left: auto; padding: 4px 10px; font-size: 0.8rem;" onclick="resetHouseScore('${house.id}')">Reset Score</button>
+        <button class="btn btn-outline" style="margin-left: auto; padding: 4px 10px; font-size: 0.8rem;" onclick="resetHouseScore('${house.id}')">Reset Score (0)</button>
       </div>
     `;
     elements.housesEditorContainer.appendChild(card);

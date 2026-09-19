@@ -242,11 +242,11 @@ body {
   background: rgba(27, 22, 47, 0.85);
   border: 2px solid var(--house-color, var(--panel-border));
   border-radius: var(--radius-md);
-  padding: 8px 16px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-width: 190px;
+  gap: 10px;
+  min-width: 195px;
   transition: all var(--transition-normal);
   overflow: hidden;
 }
@@ -289,15 +289,35 @@ body {
   animation: scorePulse 0.5s ease-out;
 }
 
+.house-score-val.pulse-minus {
+  animation: scorePulseMinus 0.5s ease-out;
+}
+
 @keyframes scorePulse {
   0% { transform: scale(1); }
   50% { transform: scale(1.35); color: #ffffff; }
   100% { transform: scale(1); }
 }
 
+@keyframes scorePulseMinus {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); color: #ef4444; }
+  100% { transform: scale(1); }
+}
+
+.house-score-val {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.house-score-val:hover {
+  filter: brightness(1.25);
+  text-shadow: 0 0 10px var(--gold-glow);
+}
+
 .score-quick-btns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 3px 4px;
   margin-left: auto;
 }
@@ -307,16 +327,45 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: var(--text-main);
   border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 0.72rem;
+  padding: 2px 5px;
+  font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
   text-align: center;
   transition: all var(--transition-fast);
+  line-height: 1.2;
 }
-.score-btn:hover {
+
+.score-btn-plus:hover {
   background: var(--house-color, var(--gold));
   color: #000;
+  box-shadow: 0 0 8px var(--house-color, var(--gold));
+}
+
+.score-btn-minus {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  color: #fca5a5;
+}
+
+.score-btn-minus:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.house-trophy-icon {
+  font-size: 0.85rem;
+  opacity: 0.75;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.house-trophy-icon:hover {
+  opacity: 1;
+  transform: scale(1.25);
 }
 
 .header-actions {
