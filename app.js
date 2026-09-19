@@ -530,6 +530,12 @@ const elements = {
 // INITIALIZATION
 function initApp() {
   loadSavedState();
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('view') === 'projector') {
+    state.activeView = 'projector';
+  } else if (urlParams.get('view') === 'setup') {
+    state.activeView = 'setup';
+  }
   bindEvents();
   renderAll();
 }
