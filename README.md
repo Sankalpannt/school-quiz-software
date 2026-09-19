@@ -57,6 +57,16 @@ npm run dev
 ```
 Then open `http://localhost:3000` in your web browser.
 
+#### Option 3: Standalone Windows Executable (.exe)
+You can directly run the pre-built standalone executable without needing Node.js or terminal commands:
+```
+dist\NepalQuiz-win32-x64\NepalQuiz.exe
+```
+To build or repackage the `.exe` at any time:
+```bash
+npm run pack
+```
+
 ---
 
 ## 📁 Project Structure
