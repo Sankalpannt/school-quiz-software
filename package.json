@@ -1,0 +1,17 @@
+{
+  "name": "nepal-quiz-app",
+  "version": "1.0.0",
+  "description": "Newlight Quiz 2083/04/29 - Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "dev": "npx -y serve -p 3000 .",
+    "start": "electron .",
+    "pack": "electron-packager . NepalQuiz --platform=win32 --arch=x64 --overwrite"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^34.5.8"
+  }
+}

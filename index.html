@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Newlight Quiz 2083/04/29</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600;800&family=Mukta:wght@400;600;700;800&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- STICKY HEADER & SCOREBOARD BAR -->
+  <header id="app-header">
+    <div class="header-inner">
+      <div class="brand-section">
+        <div class="brand-icon">🏆</div>
+        <div class="quiz-title-display" id="header-quiz-title">Newlight Quiz 2083/04/29</div>
+      </div>
+
+      <!-- Live House Scoreboard -->
+      <div class="scoreboard-houses" id="scoreboard-container">
+        <!-- House Cards generated dynamically by JavaScript -->
+      </div>
+
+      <!-- Top Header Actions -->
+      <div class="header-actions">
+        <button class="btn btn-gold" id="btn-winner-green" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.5);" title="Launch Winner Celebration Animation for House C (Green)">🏆 Winner Green House</button>
+        <button class="btn btn-gold" id="btn-winner-blue" title="Launch Winner Celebration Animation for House B (Blue)">🏆 Winner Blue House</button>
+        <button class="btn btn-outline btn-icon" id="btn-audio-toggle" title="Toggle Sound Effects">🔊</button>
+        <button class="btn btn-outline btn-icon" id="btn-fullscreen-toggle" title="Toggle Fullscreen">⚡</button>
+        <button class="btn btn-gold" id="btn-mode-toggle">⚙ Edit Setup</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- SETUP / EDITOR SCREEN -->
+  <main id="setup-screen" class="app-view active">
+    <!-- Quiz Title & Global Settings -->
+    <section class="glass-panel glass-card" style="padding: 24px;">
+      <h2 class="setup-section-title">⚙️ Quiz Setup & General Settings</h2>
+      <div class="setup-grid">
+        <div class="form-group">
+          <label class="form-label" for="input-quiz-title">Quiz Event Title</label>
+          <input type="text" id="input-quiz-title" class="form-input" value="Newlight Quiz 2083/04/29">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-default-timer">Timer Duration (Seconds per question)</label>
+          <input type="number" id="input-default-timer" class="form-input" value="30" min="5" max="300">
+        </div>
+      </div>
+    </section>
+
+    <!-- House / Team Manager -->
+    <section class="glass-panel glass-card" style="padding: 24px;">
+      <h2 class="setup-section-title">🚩 House / Team Manager</h2>
+      <div class="houses-editor-grid" id="houses-editor-container">
+        <!-- House Editor Cards rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Question Editor -->
+    <section class="glass-panel glass-card" style="padding: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 class="setup-section-title" style="margin-bottom: 0; border: none; padding: 0;">📝 Question Bank Editor</h2>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-gold" id="btn-add-question">+ Add New Question</button>
+        </div>
+      </div>
+
+      <!-- Round Editor Tabs -->
+      <div class="editor-tabs" id="editor-tabs-container">
+        <button class="tab-btn active" data-round="general">General Round (10 Pts)</button>
+        <button class="tab-btn" data-round="rapidfire_A">Rapid Fire - House A (5 Pts)</button>
+        <button class="tab-btn" data-round="rapidfire_B">Rapid Fire - House B (5 Pts)</button>
+        <button class="tab-btn" data-round="rapidfire_C">Rapid Fire - House C (5 Pts)</button>
+        <button class="tab-btn" data-round="rapidfire_D">Rapid Fire - House D (5 Pts)</button>
+        <button class="tab-btn" data-round="picture">🖼️ Picture Round (15 Pts)</button>
+        <button class="tab-btn" data-round="buzzer">🔔 Buzzer Round (15 Pts)</button>
+        <button class="tab-btn" data-round="estimation">Estimation Round (15 Pts)</button>
+      </div>
+
+      <!-- Question List Container -->
+      <div class="questions-list" id="questions-editor-list">
+        <!-- Question items rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Data Storage & Launch Actions -->
+    <section class="glass-panel glass-card" style="padding: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button class="btn btn-gold" id="btn-export-pdf">📄 Print / Export PDF Sheet</button>
+        <button class="btn btn-secondary" id="btn-export-json">💾 Export Quiz Data (.json)</button>
+        <label class="btn btn-secondary" style="margin: 0; cursor: pointer;">
+          📂 Import Quiz Data (.json)
+          <input type="file" id="file-import-json" accept=".json" style="display: none;">
+        </label>
+        <button class="btn btn-danger" id="btn-reset-default">🔄 Reset Nepalese Questions</button>
+      </div>
+
+      <button class="btn btn-gold btn-lg" id="btn-launch-presentation" style="font-size: 1.3rem;">
+        🚀 Launch Quiz Presentation
+      </button>
+    </section>
+  </main>
+
+
+  <!-- PROJECTOR PRESENTATION SCREEN -->
+  <main id="projector-screen" class="app-view">
+    <!-- Round Navigation & House Quick Switch Bar -->
+    <nav class="projector-nav-bar glass-panel">
+      <div class="round-pills" id="projector-round-pills">
+        <button class="round-pill active" data-round="general">General Round</button>
+        <button class="round-pill" data-round="rapidfire">Rapid Fire Round</button>
+        <button class="round-pill" data-round="picture">🖼️ Picture Round</button>
+        <button class="round-pill" data-round="buzzer">🔔 Buzzer Round</button>
+        <button class="round-pill" data-round="estimation">Estimation Round</button>
+      </div>
+
+      <!-- Rapid Fire House Switcher Pills (Visible in Rapid Fire Round) -->
+      <div class="rf-house-switchers" id="rf-house-switchers" style="display: none;">
+        <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted);">Active House:</span>
+        <button class="rf-house-btn active" data-house="A" style="--house-color: var(--house-a);">House A</button>
+        <button class="rf-house-btn" data-house="B" style="--house-color: var(--house-b);">House B</button>
+        <button class="rf-house-btn" data-house="C" style="--house-color: var(--house-c);">House C</button>
+        <button class="rf-house-btn" data-house="D" style="--house-color: var(--house-d);">House D</button>
+      </div>
+    </nav>
+
+    <!-- Main Projector Stage Card -->
+    <section class="stage-card glass-panel" id="stage-card">
+      <div class="stage-header">
+        <div class="stage-meta">
+          <span class="badge-round" id="stage-round-name">GENERAL ROUND</span>
+          <span class="badge-qnum" id="stage-qnum-display">Question 1 / 24</span>
+        </div>
+        <div class="badge-points" id="stage-points-display">+10 Points</div>
+      </div>
+
+      <!-- Dark Curtain Cover Overlay (Covers question until Start Question is pressed) -->
+      <div class="stage-curtain-overlay" id="stage-curtain-overlay">
+        <!-- Default Round Curtain Content -->
+        <div class="curtain-content" id="curtain-default-content">
+          <div class="curtain-badge" id="curtain-round-badge">GENERAL ROUND</div>
+          <div class="curtain-title" id="curtain-qnum-title">START GENERAL ROUND</div>
+          <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 20px;">तयार हुनुहोस्! राउण्ड सुरु गर्न Start बटन थिच्नुहोस्।</p>
+          <button class="btn btn-gold btn-lg" id="btn-start-question" style="font-size: 1.4rem; padding: 16px 36px; box-shadow: 0 0 30px var(--gold-glow);">
+            ▶ Start Round / राउण्ड सुरु गर्नुहोस्
+          </button>
+        </div>
+
+        <!-- General Round 1-24 Question Selector Matrix -->
+        <div class="general-grid-wrapper" id="curtain-general-grid" style="display: none;">
+          <div class="grid-header-row">
+            <div>
+              <h2 class="grid-title">🔢 GENERAL ROUND - QUESTION SELECTOR / प्रश्न छनोट</h2>
+              <p class="grid-subtitle">विद्यार्थी/हाउसले छानेको प्रश्न नम्बर (१ देखि २४) मा क्लिक गर्नुहोस्:</p>
+            </div>
+            <button class="btn btn-outline" id="btn-reset-general-used" style="font-size: 0.85rem; padding: 6px 14px; border-color: var(--panel-border);">
+              🔄 Reset Cross Signs
+            </button>
+          </div>
+          <div class="general-questions-matrix" id="general-questions-matrix">
+            <!-- Dynamic 1 to 24 Question Tiles generated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Question Stage Area -->
+      <div class="stage-main-content">
+        <!-- Optional Image Attachment Container -->
+        <div class="stage-image-wrapper" id="stage-image-container" style="display: none;">
+          <img id="stage-question-img" src="" alt="Question Media Attachment">
+        </div>
+
+        <!-- Question Text -->
+        <h1 class="stage-question-text" id="stage-question-text">
+          नेपालमा किराँत वंशका प्रथम राजा को मानिन्छन्?
+        </h1>
+      </div>
+
+      <!-- Answer Box Reveal Section -->
+      <div class="stage-answer-box hidden-answer" id="stage-answer-box">
+        <span class="answer-label">Correct Answer / उत्तर</span>
+        <div class="answer-text" id="stage-answer-text">यलम्बर</div>
+      </div>
+
+      <!-- Estimation Interactive Widget (Visible only in Estimation Round) -->
+      <div class="estimation-widget" id="estimation-widget" style="display: none;">
+        <div class="estimation-title">
+          <span>🎯 House Estimates Calculation</span>
+          <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted); margin-left: auto;">Enter each house's numerical estimate below:</span>
+        </div>
+        <div class="estimation-inputs-grid" id="estimation-inputs-grid">
+          <!-- House estimate cards populated dynamically -->
+        </div>
+        <div class="estimation-result-box" id="estimation-result-box" style="display: none;">
+          <div>
+            <span style="font-size: 0.85rem; color: var(--accent-cyan); font-weight: 700; text-transform: uppercase;">Result / विजेता</span>
+            <div class="estimation-winner-text" id="estimation-winner-text">--</div>
+          </div>
+          <button class="btn btn-gold" id="btn-award-estimation-winner">🏆 Award Points to Winner</button>
+        </div>
+      </div>
+
+      <!-- Buzzer Lockout Widget (Visible only in Buzzer Round) -->
+      <div class="buzzer-widget" id="buzzer-widget" style="display: none;">
+        <div class="buzzer-title">
+          <span>🔔 House Buzzer Lockout (Press Keys 1, 2, 3, 4 or click house button)</span>
+          <button class="btn btn-outline" style="margin-left: auto; padding: 4px 12px; font-size: 0.85rem;" id="btn-reset-buzzer">🔄 Reset Lockout</button>
+        </div>
+        <div class="buzzer-buttons-grid" id="buzzer-buttons-grid">
+          <!-- House buzzer trigger cards populated dynamically -->
+        </div>
+        <div class="buzzer-status-banner" id="buzzer-status-banner" style="display: none;">
+          <div id="buzzer-status-text" class="buzzer-status-text">--</div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-gold" id="btn-award-buzzer-correct">✅ +15 Correct</button>
+            <button class="btn btn-danger" id="btn-award-buzzer-wrong">❌ -5 Penalty</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Floating Projector Controls Footer -->
+    <footer class="projector-controls-bar glass-panel">
+      <div class="nav-actions">
+        <button class="btn btn-secondary btn-lg" id="btn-prev-q">← Prev</button>
+        <button class="btn btn-gold btn-lg" id="btn-reveal-answer">👁 Reveal Answer</button>
+        <button class="btn btn-secondary btn-lg" id="btn-next-q">Next →</button>
+        <button class="btn btn-outline btn-lg btn-read-question" id="btn-read-question" style="border-color: #8b5cf6; color: #c4b5fd;" title="Read Question with AI Voice (Shortcut: V Key)">🗣️ Read Question</button>
+        <button class="btn btn-outline btn-lg" id="btn-toggle-grid" style="border-color: var(--gold); color: var(--gold);" title="Select Question from 1-24 Matrix">🔢 Question Grid</button>
+      </div>
+
+      <!-- Interactive Countdown Timer -->
+      <div class="timer-box">
+        <button class="btn btn-outline btn-icon" id="btn-timer-toggle" title="Play/Pause Countdown">▶</button>
+        <div class="timer-display" id="timer-display">00:30</div>
+        <button class="btn btn-outline btn-icon" id="btn-timer-reset" title="Reset Timer">🔄</button>
+      </div>
+
+      <div class="nav-actions">
+        <button class="btn btn-outline" id="btn-keyboard-help">⌨ Shortcuts</button>
+      </div>
+    </footer>
+  </main>
+
+  <!-- KEYBOARD HELP MODAL -->
+  <div class="modal-backdrop" id="modal-keyboard-help">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">⌨️ Keyboard Navigation Shortcuts</h3>
+        <button class="btn btn-outline btn-icon" id="btn-close-modal">✕</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 1rem;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px;">
+          <kbd style="background: var(--panel-light); padding: 4px 10px; border-radius: 6px; font-family: var(--font-mono);">Right Arrow →</kbd>
+          <span>Next Question</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px;">
+          <kbd style="background: var(--panel-light); padding: 4px 10px; border-radius: 6px; font-family: var(--font-mono);">Left Arrow ←</kbd>
+          <span>Previous Question</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px;">
+          <kbd style="background: var(--panel-light); padding: 4px 10px; border-radius: 6px; font-family: var(--font-mono);">V Key</kbd>
+          <span>🗣️ Read Question AI Voice Over</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px;">
+          <kbd style="background: var(--panel-light); padding: 4px 10px; border-radius: 6px; font-family: var(--font-mono);">S Key</kbd>
+          <span>Start Question / Unveil Curtain</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px;">
+          <kbd style="background: var(--panel-light); padding: 4px 10px; border-radius: 6px; font-family: var(--font-mono);">Space / R Key</kbd>
+          <span>Toggle Reveal Answer</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--panel-border); padding-bottom: 8px;">
+          <kbd style="background: var(--panel-light); padding: 4px 10px; border-radius: 6px; font-family: var(--font-mono);">T Key</kbd>
+          <span>Start / Pause Timer</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <kbd style="background: var(--panel-light); padding: 4px 10px; border-radius: 6px; font-family: var(--font-mono);">Esc Key</kbd>
+          <span>Close Help Modal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WINNER CELEBRATION MODAL OVERLAY -->
+  <div class="modal-backdrop winner-modal-backdrop" id="modal-winner-celebration">
+    <canvas id="winner-confetti-canvas" class="winner-confetti-canvas"></canvas>
+    <div class="winner-modal-card glass-panel">
+      <button class="btn btn-outline btn-icon modal-close-btn" id="btn-close-winner-modal" title="Close Winner Screen">✕</button>
+      
+      <div class="winner-trophy-wrapper">
+        <div class="winner-trophy-icon">🏆</div>
+      </div>
+      
+      <div class="winner-badge" id="winner-house-badge">HOUSE B (BLUE)</div>
+      <h1 class="winner-title" id="winner-house-title">🎉 WINNER: HOUSE B (BLUE)! 🎉</h1>
+      <p class="winner-subtitle" id="winner-house-subtitle">बधाई छ! House B (Blue) ले उत्कृष्ट प्रदर्शन गर्दै विजय हासिल गरेको छ!</p>
+      
+      <div class="winner-score-display">
+        <span>TOTAL SCORE:</span>
+        <span class="winner-score-number" id="winner-house-score">0 Pts</span>
+      </div>
+
+      <div class="winner-members-display" id="winner-house-members" style="margin-top: 15px; font-size: 1.2rem; color: #93c5fd; font-weight: 700; background: rgba(59, 130, 246, 0.18); padding: 10px 18px; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.4);">
+        👥 Team Members: Shreeja Sapkota, Ruby Chimmal, Shristi BK
+      </div>
+
+      <div style="display: flex; gap: 15px; justify-content: center; margin-top: 24px; flex-wrap: wrap;">
+        <button class="btn btn-gold btn-lg" id="btn-retrigger-fanfare">🎺 Play Fanfare</button>
+        <button class="btn btn-secondary btn-lg" id="btn-dismiss-winner">Close Celebration</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container"></div>
+
+  <!-- JavaScript App Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
