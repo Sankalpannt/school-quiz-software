@@ -102,11 +102,23 @@ const DEFAULT_QUESTIONS = {
 // INITIAL APPLICATION STATE
 let state = {
   quizTitle: 'Newlight Quiz 2083/04/29',
+  quizSubtitle: 'School Quiz Competition',
+  brandIcon: '🏆',
   defaultTimerSeconds: 30,
+  rfTimerSeconds: 60,
+  warningBeepSeconds: 5,
+  roundPoints: {
+    general: 10,
+    rapidfire: 5,
+    picture: 15,
+    buzzer_correct: 15,
+    buzzer_wrong: -5,
+    estimation: 15
+  },
   houses: [
     { id: 'A', name: 'House A (Red)', color: '#ef4444', score: 0, members: '' },
     { id: 'B', name: 'House B (Blue)', color: '#3b82f6', score: 0, members: '' },
-    { id: 'C', name: 'House C (Green)', color: '#10b981', score: 100, members: 'Shreeja Sapkota, Ruby Chimmal, Shristi BK' },
+    { id: 'C', name: 'House C (Green)', color: '#10b981', score: 0, members: '' },
     { id: 'D', name: 'House D (Yellow)', color: '#f59e0b', score: 0, members: '' }
   ],
   questions: JSON.parse(JSON.stringify(DEFAULT_QUESTIONS)),
@@ -124,7 +136,7 @@ let state = {
   },
   audioEnabled: true,
   usedGeneralQuestions: [],
-  estimationGuesses: { A: '', B: '', C: '', D: '' },
+  estimationGuesses: {},
   buzzerLock: { lockedHouse: null, locked: false }
 };
 
@@ -415,22 +427,42 @@ class VoiceOverAI {
 const voiceAI = new VoiceOverAI();
 
 // DOM ELEMENTS CACHE
+// DOM ELEMENTS CACHE
 const elements = {
   headerQuizTitle: document.getElementById('header-quiz-title'),
+  headerQuizSubtitle: document.getElementById('header-quiz-subtitle'),
+  headerBrandIcon: document.getElementById('header-brand-icon'),
   scoreboardContainer: document.getElementById('scoreboard-container'),
   btnAudioToggle: document.getElementById('btn-audio-toggle'),
   btnFullscreenToggle: document.getElementById('btn-fullscreen-toggle'),
   btnModeToggle: document.getElementById('btn-mode-toggle'),
+  btnWinnerMenuToggle: document.getElementById('btn-winner-menu-toggle'),
+  winnerDropdownMenu: document.getElementById('winner-dropdown-menu'),
   
   setupScreen: document.getElementById('setup-screen'),
   projectorScreen: document.getElementById('projector-screen'),
   
   inputQuizTitle: document.getElementById('input-quiz-title'),
+  inputQuizSubtitle: document.getElementById('input-quiz-subtitle'),
+  inputBrandIcon: document.getElementById('input-brand-icon'),
   inputDefaultTimer: document.getElementById('input-default-timer'),
+  inputRfTimer: document.getElementById('input-rf-timer'),
+  
+  btnAddHouse: document.getElementById('btn-add-house'),
+  btnResetAllScores: document.getElementById('btn-reset-all-scores'),
   housesEditorContainer: document.getElementById('houses-editor-container'),
+  
+  inputPtsGeneral: document.getElementById('input-pts-general'),
+  inputPtsRf: document.getElementById('input-pts-rf'),
+  inputPtsPicture: document.getElementById('input-pts-picture'),
+  inputPtsBuzzerCorrect: document.getElementById('input-pts-buzzer-correct'),
+  inputPtsBuzzerWrong: document.getElementById('input-pts-buzzer-wrong'),
+  inputPtsEstimation: document.getElementById('input-pts-estimation'),
+
   editorTabsContainer: document.getElementById('editor-tabs-container'),
   questionsEditorList: document.getElementById('questions-editor-list'),
   btnAddQuestion: document.getElementById('btn-add-question'),
+  btnClearRoundQuestions: document.getElementById('btn-clear-round-questions'),
   
   btnExportJson: document.getElementById('btn-export-json'),
   fileImportJson: document.getElementById('file-import-json'),
@@ -487,8 +519,6 @@ const elements = {
   modalKeyboardHelp: document.getElementById('modal-keyboard-help'),
   btnCloseModal: document.getElementById('btn-close-modal'),
   
-  btnWinnerGreen: document.getElementById('btn-winner-green'),
-  btnWinnerBlue: document.getElementById('btn-winner-blue'),
   modalWinnerCelebration: document.getElementById('modal-winner-celebration'),
   btnCloseWinnerModal: document.getElementById('btn-close-winner-modal'),
   btnDismissWinner: document.getElementById('btn-dismiss-winner'),
@@ -510,32 +540,26 @@ function loadSavedState() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      state = { ...state, ...parsed };
-      const houseC = state.houses.find(h => h.id === 'C');
-      if (houseC) {
-        houseC.members = 'Shreeja Sapkota, Ruby Chimmal, Shristi BK';
-        if (!houseC.score || houseC.score < 100) houseC.score = 100;
+      if (parsed.quizTitle) state.quizTitle = parsed.quizTitle;
+      if (parsed.quizSubtitle) state.quizSubtitle = parsed.quizSubtitle;
+      if (parsed.brandIcon) state.brandIcon = parsed.brandIcon;
+      if (parsed.defaultTimerSeconds) state.defaultTimerSeconds = parsed.defaultTimerSeconds;
+      if (parsed.rfTimerSeconds) state.rfTimerSeconds = parsed.rfTimerSeconds;
+      if (parsed.warningBeepSeconds) state.warningBeepSeconds = parsed.warningBeepSeconds;
+      if (parsed.roundPoints && typeof parsed.roundPoints === 'object') {
+        state.roundPoints = { ...state.roundPoints, ...parsed.roundPoints };
       }
-      if (!parsed.quizTitle || parsed.quizTitle.includes('नेपाल') || parsed.quizTitle.includes('Program')) {
-        state.quizTitle = 'Newlight Quiz 2083/04/29';
+      if (parsed.houses && Array.isArray(parsed.houses) && parsed.houses.length > 0) {
+        state.houses = parsed.houses;
+      }
+      if (parsed.questions && typeof parsed.questions === 'object') {
+        state.questions = parsed.questions;
       }
       if (parsed.usedGeneralQuestions && Array.isArray(parsed.usedGeneralQuestions)) {
         state.usedGeneralQuestions = parsed.usedGeneralQuestions;
-      } else {
-        state.usedGeneralQuestions = [];
-      }
-      // Always sync default questions structure
-      state.questions = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
-      if (state.questions.picture) {
-        state.questions.picture.forEach(q => { 
-          q.question = ''; 
-          if (q.id === 'pic2') {
-            q.image = 'pictures/mahabir pun.jfif';
-          }
-        });
       }
     } catch (e) {
-      console.warn('Could not parse local storage state');
+      console.warn('Could not parse local storage state', e);
     }
   }
 }
@@ -543,7 +567,12 @@ function loadSavedState() {
 function saveState() {
   localStorage.setItem('quiz_contest_state', JSON.stringify({
     quizTitle: state.quizTitle,
+    quizSubtitle: state.quizSubtitle,
+    brandIcon: state.brandIcon,
     defaultTimerSeconds: state.defaultTimerSeconds,
+    rfTimerSeconds: state.rfTimerSeconds,
+    warningBeepSeconds: state.warningBeepSeconds,
+    roundPoints: state.roundPoints,
     houses: state.houses,
     questions: state.questions,
     usedGeneralQuestions: state.usedGeneralQuestions
@@ -561,12 +590,28 @@ function showToast(message, icon = '✨') {
 
 // RENDER CONTROLLER
 function renderAll() {
-  elements.headerQuizTitle.textContent = state.quizTitle;
-  elements.inputQuizTitle.value = state.quizTitle;
-  elements.inputDefaultTimer.value = state.defaultTimerSeconds;
+  if (elements.headerQuizTitle) elements.headerQuizTitle.textContent = state.quizTitle;
+  if (elements.headerQuizSubtitle) elements.headerQuizSubtitle.textContent = state.quizSubtitle;
+  if (elements.headerBrandIcon) elements.headerBrandIcon.textContent = state.brandIcon;
+  document.title = state.quizTitle;
+
+  if (elements.inputQuizTitle) elements.inputQuizTitle.value = state.quizTitle;
+  if (elements.inputQuizSubtitle) elements.inputQuizSubtitle.value = state.quizSubtitle;
+  if (elements.inputBrandIcon) elements.inputBrandIcon.value = state.brandIcon;
+  if (elements.inputDefaultTimer) elements.inputDefaultTimer.value = state.defaultTimerSeconds;
+  if (elements.inputRfTimer) elements.inputRfTimer.value = state.rfTimerSeconds;
+
+  if (elements.inputPtsGeneral) elements.inputPtsGeneral.value = state.roundPoints.general;
+  if (elements.inputPtsRf) elements.inputPtsRf.value = state.roundPoints.rapidfire;
+  if (elements.inputPtsPicture) elements.inputPtsPicture.value = state.roundPoints.picture;
+  if (elements.inputPtsBuzzerCorrect) elements.inputPtsBuzzerCorrect.value = state.roundPoints.buzzer_correct;
+  if (elements.inputPtsBuzzerWrong) elements.inputPtsBuzzerWrong.value = state.roundPoints.buzzer_wrong;
+  if (elements.inputPtsEstimation) elements.inputPtsEstimation.value = state.roundPoints.estimation;
 
   renderScoreboard();
+  renderWinnerMenu();
   renderHousesEditor();
+  renderEditorTabs();
   renderQuestionsEditor();
   renderProjectorStage();
 
@@ -582,21 +627,77 @@ function renderAll() {
   }
 }
 
+// DYNAMIC WINNER CELEBRATION DROPDOWN
+function renderWinnerMenu() {
+  if (!elements.winnerDropdownMenu) return;
+  elements.winnerDropdownMenu.innerHTML = '';
+
+  const maxScore = Math.max(...state.houses.map(h => h.score));
+  const leaderHouse = state.houses.find(h => h.score === maxScore);
+
+  // 1. Auto Option (Leader)
+  const autoItem = document.createElement('div');
+  autoItem.className = 'winner-dropdown-item auto-winner';
+  if (leaderHouse && maxScore > 0) {
+    autoItem.innerHTML = `<span>🥇</span> <span>Leader: <strong>${escapeHtml(leaderHouse.name)}</strong> (${leaderHouse.score} Pts)</span>`;
+    autoItem.onclick = () => {
+      closeWinnerDropdown();
+      triggerWinnerCelebration(leaderHouse.id);
+    };
+  } else {
+    autoItem.innerHTML = `<span>🥇</span> <span>Auto Leader (Tie / 0 Pts)</span>`;
+    autoItem.onclick = () => {
+      closeWinnerDropdown();
+      triggerWinnerCelebration(state.houses[0]?.id);
+    };
+  }
+  elements.winnerDropdownMenu.appendChild(autoItem);
+
+  // 2. Individual options for every house
+  state.houses.forEach(house => {
+    const item = document.createElement('div');
+    item.className = 'winner-dropdown-item';
+    item.innerHTML = `
+      <span class="winner-color-dot" style="background: ${house.color}; color: ${house.color};"></span>
+      <span>${escapeHtml(house.name)} (${house.score} Pts)</span>
+    `;
+    item.onclick = () => {
+      closeWinnerDropdown();
+      triggerWinnerCelebration(house.id);
+    };
+    elements.winnerDropdownMenu.appendChild(item);
+  });
+}
+
+function toggleWinnerDropdown() {
+  if (elements.winnerDropdownMenu) {
+    elements.winnerDropdownMenu.classList.toggle('show');
+  }
+}
+
+function closeWinnerDropdown() {
+  if (elements.winnerDropdownMenu) {
+    elements.winnerDropdownMenu.classList.remove('show');
+  }
+}
+
 // RENDER SCOREBOARD IN HEADER
 function renderScoreboard() {
   elements.scoreboardContainer.innerHTML = '';
+  const maxScore = Math.max(...state.houses.map(h => h.score));
+
   state.houses.forEach(house => {
     const card = document.createElement('div');
-    const isWinnerGreen = house.id === 'C' && house.score >= 100;
-    const isWinnerBlue = house.id === 'B' && house.score > 0 && !isWinnerGreen;
-    card.className = `house-score-card ${state.activeRFHouse === house.id && state.activeProjectorRound === 'rapidfire' ? 'active-turn' : ''} ${isWinnerGreen ? 'winner-green-active' : isWinnerBlue ? 'winner-blue-active' : ''}`;
+    const isLeader = maxScore > 0 && house.score === maxScore;
+    const isActiveTurn = state.activeRFHouse === house.id && state.activeProjectorRound === 'rapidfire';
+    card.className = `house-score-card ${isActiveTurn ? 'active-turn' : ''} ${isLeader ? 'leader-active' : ''}`;
     card.style.setProperty('--house-color', house.color);
 
-    const membersSubtitle = house.members ? `<span style="display: block; font-size: 0.72rem; color: #a7f3d0; line-height: 1.1; margin-top: 2px; font-weight: 600;">${escapeHtml(house.members)}</span>` : '';
+    const membersSubtitle = house.members ? `<span style="display: block; font-size: 0.72rem; color: #a7f3d0; line-height: 1.1; margin-top: 2px; font-weight: 600;" title="${escapeHtml(house.members)}">${escapeHtml(house.members)}</span>` : '';
 
     card.innerHTML = `
       <div class="house-info">
-        <span class="house-name" onclick="triggerWinnerCelebration('${house.id}')" style="cursor: pointer;" title="Click to launch Winner Animation">
+        <span class="house-name" onclick="triggerWinnerCelebration('${house.id}')" style="cursor: pointer;" title="Click to celebrate ${escapeHtml(house.name)} as Winner">
           ${escapeHtml(house.name)}
           <span class="house-trophy-icon" title="Celebrate Winner">🏆</span>
         </span>
@@ -644,6 +745,7 @@ window.adjustScore = function(houseId, delta) {
     if (inputEl) {
       inputEl.value = house.score;
     }
+    renderWinnerMenu();
   }
 };
 
@@ -688,19 +790,26 @@ window.setHouseScore = function(houseId, val) {
 
 // RENDER HOUSES SETUP EDITOR
 function renderHousesEditor() {
+  if (!elements.housesEditorContainer) return;
   elements.housesEditorContainer.innerHTML = '';
+  const canDelete = state.houses.length > 2;
+
   state.houses.forEach(house => {
     const card = document.createElement('div');
     card.className = 'glass-card house-edit-card';
     card.style.setProperty('--house-color', house.color);
 
     card.innerHTML = `
-      <div class="form-group" style="margin-bottom: 8px;">
-        <label class="form-label">House Name</label>
-        <input type="text" class="form-input" value="${escapeHtml(house.name)}" onchange="updateHouseName('${house.id}', this.value)">
+      <div class="form-group" style="margin-bottom: 6px;">
+        <label class="form-label">Team / House Name</label>
+        <input type="text" class="form-input" value="${escapeHtml(house.name)}" onchange="updateHouseName('${house.id}', this.value)" placeholder="House Name">
       </div>
-      <div class="form-group" style="margin-bottom: 8px;">
-        <label class="form-label">Current Score / अङ्क</label>
+      <div class="form-group" style="margin-bottom: 6px;">
+        <label class="form-label">Team Members / Participants</label>
+        <input type="text" class="form-input" placeholder="e.g. Student 1, Student 2, Student 3" value="${escapeHtml(house.members || '')}" onchange="updateHouseMembers('${house.id}', this.value)">
+      </div>
+      <div class="form-group" style="margin-bottom: 6px;">
+        <label class="form-label">Score / अङ्क (Current: ${house.score})</label>
         <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
           <input type="number" id="input-house-score-${house.id}" class="form-input" value="${house.score}" onchange="setHouseScore('${house.id}', this.value)" style="width: 85px;">
           <button class="btn btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="adjustScore('${house.id}', 10)">+10</button>
@@ -709,10 +818,11 @@ function renderHousesEditor() {
           <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="adjustScore('${house.id}', -10)">-10</button>
         </div>
       </div>
-      <div class="color-picker-row">
+      <div class="color-picker-row" style="margin-top: 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
         <input type="color" value="${house.color}" onchange="updateHouseColor('${house.id}', this.value)">
-        <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted);">Theme Color</span>
-        <button class="btn btn-outline" style="margin-left: auto; padding: 4px 10px; font-size: 0.8rem;" onclick="resetHouseScore('${house.id}')">Reset Score (0)</button>
+        <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);">Theme Color</span>
+        <button class="btn btn-outline" style="margin-left: auto; padding: 4px 10px; font-size: 0.8rem;" onclick="resetHouseScore('${house.id}')">Reset (0)</button>
+        ${canDelete ? `<button class="btn btn-danger" style="padding: 4px 10px; font-size: 0.8rem;" onclick="deleteHouse('${house.id}')">🗑 Delete</button>` : ''}
       </div>
     `;
     elements.housesEditorContainer.appendChild(card);
@@ -721,18 +831,146 @@ function renderHousesEditor() {
 
 window.updateHouseName = function(houseId, name) {
   const house = state.houses.find(h => h.id === houseId);
-  if (house) { house.name = name; saveState(); renderScoreboard(); }
+  if (house) {
+    house.name = name.trim() || `Team ${houseId}`;
+    saveState();
+    renderScoreboard();
+    renderWinnerMenu();
+    renderEditorTabs();
+  }
+};
+
+window.updateHouseMembers = function(houseId, members) {
+  const house = state.houses.find(h => h.id === houseId);
+  if (house) {
+    house.members = members.trim();
+    saveState();
+    renderScoreboard();
+  }
 };
 
 window.updateHouseColor = function(houseId, color) {
   const house = state.houses.find(h => h.id === houseId);
-  if (house) { house.color = color; saveState(); renderScoreboard(); renderHousesEditor(); }
+  if (house) {
+    house.color = color;
+    saveState();
+    renderScoreboard();
+    renderWinnerMenu();
+    renderHousesEditor();
+    renderProjectorStage();
+  }
+};
+
+window.addNewHouse = function() {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let nextId = '';
+  for (let l of letters) {
+    if (!state.houses.some(h => h.id === l)) {
+      nextId = l;
+      break;
+    }
+  }
+  if (!nextId) nextId = 'T_' + (state.houses.length + 1);
+
+  const colors = ['#ec4899', '#8b5cf6', '#06b6d4', '#14b8a6', '#f97316', '#6366f1', '#e11d48', '#84cc16'];
+  const newColor = colors[state.houses.length % colors.length];
+
+  const newHouse = {
+    id: nextId,
+    name: `House ${nextId}`,
+    color: newColor,
+    score: 0,
+    members: ''
+  };
+
+  state.houses.push(newHouse);
+  if (!state.questions['rapidfire_' + nextId]) {
+    state.questions['rapidfire_' + nextId] = [];
+  }
+  saveState();
+  renderAll();
+  showToast(`Added new team: ${newHouse.name}!`, '🎉');
+};
+
+window.deleteHouse = function(houseId) {
+  if (state.houses.length <= 2) {
+    alert('A competition needs at least 2 teams.');
+    return;
+  }
+  const house = state.houses.find(h => h.id === houseId);
+  if (!house) return;
+
+  if (confirm(`Are you sure you want to delete ${house.name}?`)) {
+    state.houses = state.houses.filter(h => h.id !== houseId);
+    if (state.activeRFHouse === houseId) {
+      state.activeRFHouse = state.houses[0]?.id || 'A';
+    }
+    saveState();
+    renderAll();
+    showToast(`Deleted ${house.name}`);
+  }
 };
 
 window.resetHouseScore = function(houseId) {
   const house = state.houses.find(h => h.id === houseId);
-  if (house) { house.score = 0; saveState(); renderScoreboard(); showToast(`Score reset for ${house.name}`); }
+  if (house) {
+    house.score = 0;
+    saveState();
+    renderScoreboard();
+    renderWinnerMenu();
+    renderHousesEditor();
+    showToast(`Score reset for ${house.name}`);
+  }
 };
+
+window.resetAllScores = function() {
+  if (confirm('Reset scores of ALL houses to 0 for a new game?')) {
+    state.houses.forEach(h => h.score = 0);
+    saveState();
+    renderScoreboard();
+    renderWinnerMenu();
+    renderHousesEditor();
+    showToast('All house scores reset to 0!', '🔄');
+  }
+};
+
+// DYNAMIC EDITOR TABS
+function renderEditorTabs() {
+  if (!elements.editorTabsContainer) return;
+  elements.editorTabsContainer.innerHTML = '';
+
+  const tabs = [
+    { key: 'general', label: `General Round (${state.roundPoints.general} Pts)` }
+  ];
+
+  state.houses.forEach(h => {
+    tabs.push({ key: `rapidfire_${h.id}`, label: `Rapid Fire - ${h.name} (${state.roundPoints.rapidfire} Pts)` });
+  });
+
+  tabs.push(
+    { key: 'picture', label: `🖼️ Picture Round (${state.roundPoints.picture} Pts)` },
+    { key: 'buzzer', label: `🔔 Buzzer Round (${state.roundPoints.buzzer_correct} Pts)` },
+    { key: 'estimation', label: `Estimation Round (${state.roundPoints.estimation} Pts)` }
+  );
+
+  const validKeys = tabs.map(t => t.key);
+  if (!validKeys.includes(state.activeEditorTab)) {
+    state.activeEditorTab = 'general';
+  }
+
+  tabs.forEach(tab => {
+    const btn = document.createElement('button');
+    btn.className = `tab-btn ${state.activeEditorTab === tab.key ? 'active' : ''}`;
+    btn.dataset.round = tab.key;
+    btn.textContent = tab.label;
+    btn.onclick = () => {
+      state.activeEditorTab = tab.key;
+      renderEditorTabs();
+      renderQuestionsEditor();
+    };
+    elements.editorTabsContainer.appendChild(btn);
+  });
+}
 
 // RENDER QUESTIONS SETUP EDITOR
 function renderQuestionsEditor() {
@@ -787,6 +1025,7 @@ function renderQuestionsEditor() {
 }
 
 window.updateQuestion = function(roundKey, qId, field, value) {
+  if (!state.questions[roundKey]) return;
   const q = state.questions[roundKey].find(item => item.id === qId);
   if (q) {
     q[field] = value;
@@ -795,11 +1034,26 @@ window.updateQuestion = function(roundKey, qId, field, value) {
 };
 
 window.deleteQuestion = function(roundKey, qId) {
+  if (!state.questions[roundKey]) return;
   if (confirm('Are you sure you want to delete this question?')) {
     state.questions[roundKey] = state.questions[roundKey].filter(item => item.id !== qId);
     saveState();
     renderQuestionsEditor();
     showToast('Question deleted');
+  }
+};
+
+window.clearCurrentRoundQuestions = function() {
+  const currentKey = state.activeEditorTab;
+  if (!state.questions[currentKey] || state.questions[currentKey].length === 0) {
+    showToast('No questions to clear in this round.');
+    return;
+  }
+  if (confirm(`Are you sure you want to delete ALL questions in this round?`)) {
+    state.questions[currentKey] = [];
+    saveState();
+    renderQuestionsEditor();
+    showToast('Questions cleared for this round.');
   }
 };
 
@@ -817,24 +1071,36 @@ window.handleImageUpload = function(event, roundKey, qId) {
 };
 
 // ADD NEW QUESTION
-elements.btnAddQuestion.addEventListener('click', () => {
-  const currentKey = state.activeEditorTab;
-  const newId = 'q_' + Date.now();
-  const defaultPts = currentKey === 'general' ? 10 : (currentKey.startsWith('rapidfire') ? 5 : 15);
+if (elements.btnAddQuestion) {
+  elements.btnAddQuestion.addEventListener('click', () => {
+    const currentKey = state.activeEditorTab;
+    const newId = 'q_' + Date.now();
+    
+    let defaultPts = 10;
+    if (currentKey === 'general') defaultPts = state.roundPoints.general || 10;
+    else if (currentKey.startsWith('rapidfire')) defaultPts = state.roundPoints.rapidfire || 5;
+    else if (currentKey === 'picture') defaultPts = state.roundPoints.picture || 15;
+    else if (currentKey === 'buzzer') defaultPts = state.roundPoints.buzzer_correct || 15;
+    else if (currentKey === 'estimation') defaultPts = state.roundPoints.estimation || 15;
 
-  state.questions[currentKey].push({
-    id: newId,
-    question: 'नयाँ प्रश्न थप्नुहोस् (New Question Text)',
-    answer: 'उत्तर (Correct Answer)',
-    points: defaultPts,
-    image: '',
-    targetValue: currentKey === 'estimation' ? 100 : undefined
+    if (!state.questions[currentKey]) {
+      state.questions[currentKey] = [];
+    }
+
+    state.questions[currentKey].push({
+      id: newId,
+      question: 'नयाँ प्रश्न थप्नुहोस् (New Question Text)',
+      answer: 'उत्तर (Correct Answer)',
+      points: defaultPts,
+      image: '',
+      targetValue: currentKey === 'estimation' ? 100 : undefined
+    });
+
+    saveState();
+    renderQuestionsEditor();
+    showToast('New question added to ' + currentKey);
   });
-
-  saveState();
-  renderQuestionsEditor();
-  showToast('New question added to ' + currentKey);
-});
+}
 
 // PROJECTOR STAGE PRESENTATION CONTROLLER
 function getActiveQuestionList() {
@@ -860,9 +1126,7 @@ function renderProjectorStage() {
 
   if (state.activeProjectorRound === 'rapidfire') {
     elements.rfHouseSwitchers.style.display = 'flex';
-    document.querySelectorAll('.rf-house-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.house === state.activeRFHouse);
-    });
+    renderRFHouseSwitchers();
   } else {
     elements.rfHouseSwitchers.style.display = 'none';
   }
@@ -881,7 +1145,11 @@ function renderProjectorStage() {
   // Set Round Title & Counter
   let roundTitle = 'QUIZ ROUND';
   if (state.activeProjectorRound === 'general') roundTitle = 'GENERAL ROUND';
-  else if (state.activeProjectorRound === 'rapidfire') roundTitle = `RAPID FIRE - HOUSE ${state.activeRFHouse}`;
+  else if (state.activeProjectorRound === 'rapidfire') {
+    const activeHouseObj = state.houses.find(h => h.id === state.activeRFHouse);
+    const houseName = activeHouseObj ? activeHouseObj.name : `HOUSE ${state.activeRFHouse}`;
+    roundTitle = `RAPID FIRE - ${houseName.toUpperCase()}`;
+  }
   else if (state.activeProjectorRound === 'picture') roundTitle = '🖼️ PICTURE ROUND';
   else if (state.activeProjectorRound === 'estimation') roundTitle = '🎯 ESTIMATION ROUND';
   
@@ -954,6 +1222,22 @@ function renderProjectorStage() {
   } else {
     elements.buzzerWidget.style.display = 'none';
   }
+}
+
+// DYNAMIC RAPID FIRE HOUSE SWITCHER BUTTONS
+function renderRFHouseSwitchers() {
+  if (!elements.rfHouseSwitchers) return;
+  elements.rfHouseSwitchers.innerHTML = `
+    <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted); margin-right: 4px;">Active House:</span>
+  `;
+  state.houses.forEach(house => {
+    const btn = document.createElement('button');
+    btn.className = `rf-house-btn ${house.id === state.activeRFHouse ? 'active' : ''}`;
+    btn.dataset.house = house.id;
+    btn.style.setProperty('--house-color', house.color);
+    btn.textContent = house.name;
+    elements.rfHouseSwitchers.appendChild(btn);
+  });
 }
 
 // GENERAL ROUND QUESTION SELECTOR MATRIX (1 to 24)
@@ -1052,13 +1336,14 @@ function calculateEstimationWinner() {
     if (winnerCard) winnerCard.classList.add('winner-card');
 
     elements.estimationResultBox.style.display = 'flex';
-    elements.estimationWinnerText.innerHTML = `🏆 Winner: <span style="color: ${closestHouse.color}">${closestHouse.name}</span> (Target: ${target}, Nearest Guess Diff: ${minDiff.toFixed(2)})`;
+    elements.estimationWinnerText.innerHTML = `🏆 Winner: <span style="color: ${closestHouse.color}">${escapeHtml(closestHouse.name)}</span> (Target: ${target}, Nearest Guess Diff: ${minDiff.toFixed(2)})`;
     
     // Setup 1-click award button
+    const awardPoints = currentQ.points || (state.roundPoints && state.roundPoints.estimation) || 15;
     elements.btnAwardEstimationWinner.onclick = function() {
-      adjustScore(closestHouse.id, currentQ.points || 15);
+      adjustScore(closestHouse.id, awardPoints);
       audio.playFanfare();
-      showToast(`Awarded +${currentQ.points || 15} Pts to ${closestHouse.name}!`);
+      showToast(`Awarded +${awardPoints} Pts to ${closestHouse.name}!`);
     };
   } else {
     elements.estimationResultBox.style.display = 'none';
@@ -1095,18 +1380,21 @@ function renderBuzzerWidget() {
     const house = state.houses.find(h => h.id === state.buzzerLock.lockedHouse);
     if (house) {
       elements.buzzerStatusBanner.style.display = 'flex';
-      elements.buzzerStatusText.innerHTML = `🚨 <span style="color: ${house.color}">${house.name}</span> Buzzed First!`;
+      elements.buzzerStatusText.innerHTML = `🚨 <span style="color: ${house.color}">${escapeHtml(house.name)}</span> Buzzed First!`;
+
+      const correctPts = (state.roundPoints && state.roundPoints.buzzerCorrect) || 15;
+      const penaltyPts = (state.roundPoints && state.roundPoints.buzzerWrong) || -5;
 
       elements.btnAwardBuzzerCorrect.onclick = function() {
-        adjustScore(house.id, 15);
+        adjustScore(house.id, correctPts);
         audio.playFanfare();
-        showToast(`Correct! +15 Pts awarded to ${house.name}`);
+        showToast(`Correct! +${correctPts} Pts awarded to ${house.name}`);
         resetBuzzerLockout();
       };
 
       elements.btnAwardBuzzerWrong.onclick = function() {
-        adjustScore(house.id, -5);
-        showToast(`Penalty! -5 Pts deducted from ${house.name}`, '⚠️');
+        adjustScore(house.id, penaltyPts);
+        showToast(`Penalty! ${penaltyPts} Pts deducted from ${house.name}`, '⚠️');
         resetBuzzerLockout();
       };
     }
@@ -1221,7 +1509,9 @@ function pauseTimer() {
 
 function resetTimer() {
   pauseTimer();
-  state.timer.remaining = state.activeProjectorRound === 'rapidfire' ? 60 : state.defaultTimerSeconds;
+  const rfTime = state.rfTimerSeconds || 60;
+  const defTime = state.defaultTimerSeconds || 30;
+  state.timer.remaining = state.activeProjectorRound === 'rapidfire' ? rfTime : defTime;
   updateTimerDisplay();
 }
 
@@ -1282,14 +1572,24 @@ if (elements.btnExportPdf) {
 }
 
 elements.btnExportJson.addEventListener('click', () => {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+  const exportPayload = {
+    quizTitle: state.quizTitle,
+    quizSubtitle: state.quizSubtitle,
+    brandIcon: state.brandIcon,
+    defaultTimerSeconds: state.defaultTimerSeconds,
+    rfTimerSeconds: state.rfTimerSeconds,
+    roundPoints: state.roundPoints,
+    houses: state.houses,
+    questions: state.questions
+  };
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
   downloadAnchor.setAttribute("download", `quiz_contest_data_${Date.now()}.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
-  showToast('Quiz setup exported successfully!');
+  showToast('Quiz setup and questions exported successfully!');
 });
 
 elements.fileImportJson.addEventListener('change', (e) => {
@@ -1301,13 +1601,18 @@ elements.fileImportJson.addEventListener('change', (e) => {
         const imported = JSON.parse(evt.target.result);
         if (imported.questions && imported.houses) {
           state.quizTitle = imported.quizTitle || state.quizTitle;
+          state.quizSubtitle = imported.quizSubtitle || state.quizSubtitle;
+          state.brandIcon = imported.brandIcon || state.brandIcon;
+          state.defaultTimerSeconds = imported.defaultTimerSeconds || state.defaultTimerSeconds;
+          state.rfTimerSeconds = imported.rfTimerSeconds || state.rfTimerSeconds;
+          if (imported.roundPoints) state.roundPoints = { ...state.roundPoints, ...imported.roundPoints };
           state.houses = imported.houses;
           state.questions = imported.questions;
           saveState();
           renderAll();
           showToast('Quiz setup imported successfully!');
         } else {
-          alert('Invalid quiz JSON file format.');
+          alert('Invalid quiz JSON file format. Must contain questions and houses.');
         }
       } catch (err) {
         alert('Error reading JSON file: ' + err.message);
@@ -1318,12 +1623,12 @@ elements.fileImportJson.addEventListener('change', (e) => {
 });
 
 elements.btnResetDefault.addEventListener('click', () => {
-  if (confirm('Reset to original Nepalese General Knowledge questions? Custom edits will be restored to default.')) {
+  if (confirm('Reset question bank to original default Nepalese questions? Custom edits to questions will be restored to default.')) {
     state.questions = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
     saveState();
     renderQuestionsEditor();
     renderProjectorStage();
-    showToast('Reset to default Nepalese questions!');
+    showToast('Reset questions to default!');
   }
 });
 
@@ -1384,8 +1689,96 @@ if (elements.btnToggleGrid) {
   });
 }
 
-// KEYBOARD SHORTCUTS HANDLERS
+// KEYBOARD SHORTCUTS & EVENT BINDINGS
 function bindEvents() {
+  // Setup Screen Dynamic Customization Listeners
+  if (elements.btnAddHouse) {
+    elements.btnAddHouse.addEventListener('click', addNewHouse);
+  }
+
+  if (elements.btnResetAllScores) {
+    elements.btnResetAllScores.addEventListener('click', resetAllScores);
+  }
+
+  if (elements.btnClearRoundQuestions) {
+    elements.btnClearRoundQuestions.addEventListener('click', clearCurrentRoundQuestions);
+  }
+
+  if (elements.btnWinnerMenuToggle) {
+    elements.btnWinnerMenuToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleWinnerDropdown();
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (elements.winnerDropdownMenu && !e.target.closest('.winner-menu-container')) {
+      closeWinnerDropdown();
+    }
+  });
+
+  if (elements.inputQuizSubtitle) {
+    elements.inputQuizSubtitle.addEventListener('input', (e) => {
+      state.quizSubtitle = e.target.value;
+      if (elements.headerQuizSubtitle) elements.headerQuizSubtitle.textContent = state.quizSubtitle;
+      saveState();
+    });
+  }
+
+  if (elements.inputBrandIcon) {
+    elements.inputBrandIcon.addEventListener('input', (e) => {
+      state.brandIcon = e.target.value || '🏆';
+      if (elements.headerBrandIcon) elements.headerBrandIcon.textContent = state.brandIcon;
+      saveState();
+    });
+  }
+
+  if (elements.inputRfTimer) {
+    elements.inputRfTimer.addEventListener('change', (e) => {
+      state.rfTimerSeconds = parseInt(e.target.value) || 60;
+      if (state.activeProjectorRound === 'rapidfire') resetTimer();
+      saveState();
+    });
+  }
+
+  // Scoring Rule Inputs
+  if (elements.inputPtsGeneral) {
+    elements.inputPtsGeneral.addEventListener('change', (e) => {
+      state.roundPoints.general = parseInt(e.target.value) || 10;
+      saveState();
+    });
+  }
+  if (elements.inputPtsRf) {
+    elements.inputPtsRf.addEventListener('change', (e) => {
+      state.roundPoints.rapidfire = parseInt(e.target.value) || 5;
+      saveState();
+    });
+  }
+  if (elements.inputPtsPicture) {
+    elements.inputPtsPicture.addEventListener('change', (e) => {
+      state.roundPoints.picture = parseInt(e.target.value) || 15;
+      saveState();
+    });
+  }
+  if (elements.inputPtsBuzzerCorrect) {
+    elements.inputPtsBuzzerCorrect.addEventListener('change', (e) => {
+      state.roundPoints.buzzerCorrect = parseInt(e.target.value) || 15;
+      saveState();
+    });
+  }
+  if (elements.inputPtsBuzzerWrong) {
+    elements.inputPtsBuzzerWrong.addEventListener('change', (e) => {
+      state.roundPoints.buzzerWrong = parseInt(e.target.value) || -5;
+      saveState();
+    });
+  }
+  if (elements.inputPtsEstimation) {
+    elements.inputPtsEstimation.addEventListener('change', (e) => {
+      state.roundPoints.estimation = parseInt(e.target.value) || 15;
+      saveState();
+    });
+  }
+
   document.addEventListener('keydown', (e) => {
     // Disable shortcuts if user is typing inside an input/textarea
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
@@ -1406,11 +1799,11 @@ function bindEvents() {
         elements.btnTimerToggle.click();
       }
 
-      // Buzzer Round Key Shortcuts (Keys 1, 2, 3, 4)
+      // Buzzer Round Key Shortcuts (Keys 1 to 9 for houses)
       if (state.activeProjectorRound === 'buzzer') {
-        if (['1', '2', '3', '4'].includes(e.key)) {
-          const houseIdx = parseInt(e.key) - 1;
-          const targetHouse = state.houses[houseIdx];
+        const keyNum = parseInt(e.key);
+        if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= state.houses.length) {
+          const targetHouse = state.houses[keyNum - 1];
           if (targetHouse) {
             triggerHouseBuzzer(targetHouse.id);
           }
@@ -1420,6 +1813,8 @@ function bindEvents() {
 
     if (e.key === 'Escape') {
       elements.modalKeyboardHelp.classList.remove('open');
+      closeWinnerModal();
+      closeWinnerDropdown();
     }
   });
 
@@ -1430,18 +1825,6 @@ function bindEvents() {
   elements.btnCloseModal.addEventListener('click', () => {
     elements.modalKeyboardHelp.classList.remove('open');
   });
-
-  if (elements.btnWinnerGreen) {
-    elements.btnWinnerGreen.addEventListener('click', () => {
-      triggerWinnerCelebration('C');
-    });
-  }
-
-  if (elements.btnWinnerBlue) {
-    elements.btnWinnerBlue.addEventListener('click', () => {
-      triggerWinnerCelebration('B');
-    });
-  }
 
   if (elements.btnCloseWinnerModal) {
     elements.btnCloseWinnerModal.addEventListener('click', closeWinnerModal);
@@ -1481,7 +1864,7 @@ class ConfettiSystem {
     this.animating = true;
     this.particles = [];
     
-    const themeColors = [houseColor, '#3b82f6', '#60a5fa', '#00f0ff', '#f59e0b', '#ffffff', '#38bdf8'];
+    const themeColors = [houseColor, '#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6', '#ffffff', '#38bdf8'];
     const count = 180;
     for (let i = 0; i < count; i++) {
       this.particles.push({
@@ -1541,8 +1924,15 @@ class ConfettiSystem {
 
 const confettiSystem = new ConfettiSystem('winner-confetti-canvas');
 
-window.triggerWinnerCelebration = function(houseId = 'C') {
-  const house = state.houses.find(h => h.id === houseId) || state.houses.find(h => h.id === 'C') || state.houses[2];
+window.triggerWinnerCelebration = function(houseId) {
+  let house = null;
+  if (houseId) {
+    house = state.houses.find(h => h.id === houseId);
+  }
+  if (!house) {
+    const sorted = [...state.houses].sort((a, b) => b.score - a.score);
+    house = sorted[0] || state.houses[0];
+  }
   if (!house) return;
 
   const modalCard = document.querySelector('#modal-winner-celebration .winner-modal-card');
@@ -1553,24 +1943,14 @@ window.triggerWinnerCelebration = function(houseId = 'C') {
   const membersEl = document.getElementById('winner-house-members');
 
   if (modalCard) {
-    if (house.id === 'C') {
-      modalCard.style.background = 'radial-gradient(circle at 50% 30%, rgba(6, 78, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%)';
-      modalCard.style.borderColor = '#10b981';
-      modalCard.style.boxShadow = '0 0 60px rgba(16, 185, 129, 0.7), inset 0 0 40px rgba(16, 185, 129, 0.4)';
-    } else if (house.id === 'B') {
-      modalCard.style.background = 'radial-gradient(circle at 50% 30%, rgba(30, 58, 138, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%)';
-      modalCard.style.borderColor = '#3b82f6';
-      modalCard.style.boxShadow = '0 0 60px rgba(59, 130, 246, 0.7), inset 0 0 40px rgba(59, 130, 246, 0.4)';
-    } else {
-      modalCard.style.background = 'radial-gradient(circle at 50% 30%, rgba(38, 32, 64, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%)';
-      modalCard.style.borderColor = house.color;
-      modalCard.style.boxShadow = `0 0 60px ${house.color}, inset 0 0 40px ${house.color}`;
-    }
+    modalCard.style.background = 'radial-gradient(circle at 50% 30%, rgba(20, 24, 45, 0.98) 0%, rgba(10, 14, 26, 0.99) 100%)';
+    modalCard.style.borderColor = house.color;
+    modalCard.style.boxShadow = `0 0 60px ${house.color}99, inset 0 0 35px ${house.color}33`;
   }
 
   if (badge) {
     badge.textContent = house.name.toUpperCase();
-    badge.style.background = `linear-gradient(135deg, ${house.color}, #059669)`;
+    badge.style.background = `linear-gradient(135deg, ${house.color}, #1e293b)`;
   }
   if (title) {
     title.innerHTML = `🎉 WINNER: ${escapeHtml(house.name)}! 🎉`;
@@ -1582,10 +1962,9 @@ window.triggerWinnerCelebration = function(houseId = 'C') {
     scoreNum.textContent = `${house.score} Points`;
   }
   if (membersEl) {
-    const memberNames = house.members || (house.id === 'C' ? 'Shreeja Sapkota, Ruby Chimmal, Shristi BK' : '');
-    if (memberNames) {
+    if (house.members && house.members.trim()) {
       membersEl.style.display = 'block';
-      membersEl.innerHTML = `👥 <strong>Team Members:</strong> ${escapeHtml(memberNames)}`;
+      membersEl.innerHTML = `👥 <strong>Team Members:</strong> ${escapeHtml(house.members)}`;
     } else {
       membersEl.style.display = 'none';
     }
@@ -1612,3 +1991,4 @@ function escapeHtml(str) {
 
 // START APPLICATION
 document.addEventListener('DOMContentLoaded', initApp);
+

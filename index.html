@@ -19,8 +19,11 @@
   <header id="app-header">
     <div class="header-inner">
       <div class="brand-section">
-        <div class="brand-icon">🏆</div>
-        <div class="quiz-title-display" id="header-quiz-title">Newlight Quiz 2083/04/29</div>
+        <div class="brand-icon" id="header-brand-icon" title="Custom Brand Emoji / Icon">🏆</div>
+        <div>
+          <div class="quiz-title-display" id="header-quiz-title">Newlight Quiz 2083/04/29</div>
+          <div class="quiz-subtitle-display" id="header-quiz-subtitle">School Quiz Competition</div>
+        </div>
       </div>
 
       <!-- Live House Scoreboard -->
@@ -30,8 +33,12 @@
 
       <!-- Top Header Actions -->
       <div class="header-actions">
-        <button class="btn btn-gold" id="btn-winner-green" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.5);" title="Launch Winner Celebration Animation for House C (Green)">🏆 Winner Green House</button>
-        <button class="btn btn-gold" id="btn-winner-blue" title="Launch Winner Celebration Animation for House B (Blue)">🏆 Winner Blue House</button>
+        <div class="winner-menu-container">
+          <button class="btn btn-gold" id="btn-winner-menu-toggle" title="Announce & Celebrate Competition Winner">🏆 Announce Winner ▾</button>
+          <div class="winner-dropdown-menu" id="winner-dropdown-menu">
+            <!-- Dynamically populated options -->
+          </div>
+        </div>
         <button class="btn btn-outline btn-icon" id="btn-audio-toggle" title="Toggle Sound Effects">🔊</button>
         <button class="btn btn-outline btn-icon" id="btn-fullscreen-toggle" title="Toggle Fullscreen">⚡</button>
         <button class="btn btn-gold" id="btn-mode-toggle">⚙ Edit Setup</button>
@@ -43,46 +50,89 @@
   <main id="setup-screen" class="app-view active">
     <!-- Quiz Title & Global Settings -->
     <section class="glass-panel glass-card" style="padding: 24px;">
-      <h2 class="setup-section-title">⚙️ Quiz Setup & General Settings</h2>
-      <div class="setup-grid">
+      <h2 class="setup-section-title">⚙️ Quiz Identity & Event Settings</h2>
+      <div class="setup-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
         <div class="form-group">
           <label class="form-label" for="input-quiz-title">Quiz Event Title</label>
-          <input type="text" id="input-quiz-title" class="form-input" value="Newlight Quiz 2083/04/29">
+          <input type="text" id="input-quiz-title" class="form-input" value="Newlight Quiz 2083/04/29" placeholder="e.g. Annual School Quiz 2083">
         </div>
         <div class="form-group">
-          <label class="form-label" for="input-default-timer">Timer Duration (Seconds per question)</label>
+          <label class="form-label" for="input-quiz-subtitle">Event Subtitle / School Name</label>
+          <input type="text" id="input-quiz-subtitle" class="form-input" value="School Quiz Competition" placeholder="e.g. Newlight Academy, Grade 10">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-brand-icon">Brand Icon / Emoji</label>
+          <input type="text" id="input-brand-icon" class="form-input" value="🏆" maxlength="4" style="text-align: center; font-size: 1.3rem;">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-default-timer">Question Timer (Seconds)</label>
           <input type="number" id="input-default-timer" class="form-input" value="30" min="5" max="300">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-rf-timer">Rapid Fire Timer (Seconds)</label>
+          <input type="number" id="input-rf-timer" class="form-input" value="60" min="15" max="300">
         </div>
       </div>
     </section>
 
     <!-- House / Team Manager -->
     <section class="glass-panel glass-card" style="padding: 24px;">
-      <h2 class="setup-section-title">🚩 House / Team Manager</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <h2 class="setup-section-title" style="margin-bottom: 0; border: none; padding: 0;">🚩 House / Team Manager</h2>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-gold" id="btn-add-house">+ Add New Team / House</button>
+          <button class="btn btn-outline" id="btn-reset-all-scores">🔄 Reset All Scores (0)</button>
+        </div>
+      </div>
       <div class="houses-editor-grid" id="houses-editor-container">
         <!-- House Editor Cards rendered dynamically -->
       </div>
     </section>
 
+    <!-- Round Scoring Rules & Default Points -->
+    <section class="glass-panel glass-card" style="padding: 24px;">
+      <h2 class="setup-section-title">🎯 Default Points & Scoring Rules</h2>
+      <div class="setup-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="form-group">
+          <label class="form-label" for="input-pts-general">General Round Pts</label>
+          <input type="number" id="input-pts-general" class="form-input" value="10" min="1" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-pts-rf">Rapid Fire Pts (per Q)</label>
+          <input type="number" id="input-pts-rf" class="form-input" value="5" min="1" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-pts-picture">Picture Round Pts</label>
+          <input type="number" id="input-pts-picture" class="form-input" value="15" min="1" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-pts-buzzer-correct">Buzzer Correct Pts</label>
+          <input type="number" id="input-pts-buzzer-correct" class="form-input" value="15" min="1" max="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-pts-buzzer-wrong">Buzzer Penalty Pts</label>
+          <input type="number" id="input-pts-buzzer-wrong" class="form-input" value="-5" min="-50" max="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="input-pts-estimation">Estimation Round Pts</label>
+          <input type="number" id="input-pts-estimation" class="form-input" value="15" min="1" max="100">
+        </div>
+      </div>
+    </section>
+
     <!-- Question Editor -->
     <section class="glass-panel glass-card" style="padding: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
         <h2 class="setup-section-title" style="margin-bottom: 0; border: none; padding: 0;">📝 Question Bank Editor</h2>
         <div style="display: flex; gap: 10px;">
           <button class="btn btn-gold" id="btn-add-question">+ Add New Question</button>
+          <button class="btn btn-outline" id="btn-clear-round-questions">🗑 Clear Current Round Questions</button>
         </div>
       </div>
 
       <!-- Round Editor Tabs -->
       <div class="editor-tabs" id="editor-tabs-container">
-        <button class="tab-btn active" data-round="general">General Round (10 Pts)</button>
-        <button class="tab-btn" data-round="rapidfire_A">Rapid Fire - House A (5 Pts)</button>
-        <button class="tab-btn" data-round="rapidfire_B">Rapid Fire - House B (5 Pts)</button>
-        <button class="tab-btn" data-round="rapidfire_C">Rapid Fire - House C (5 Pts)</button>
-        <button class="tab-btn" data-round="rapidfire_D">Rapid Fire - House D (5 Pts)</button>
-        <button class="tab-btn" data-round="picture">🖼️ Picture Round (15 Pts)</button>
-        <button class="tab-btn" data-round="buzzer">🔔 Buzzer Round (15 Pts)</button>
-        <button class="tab-btn" data-round="estimation">Estimation Round (15 Pts)</button>
+        <!-- Tabs generated dynamically by JavaScript -->
       </div>
 
       <!-- Question List Container -->

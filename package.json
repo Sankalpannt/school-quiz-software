@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npx -y serve -p 3000 .",
     "start": "electron .",
-    "pack": "electron-packager . NepalQuiz --platform=win32 --arch=x64 --out=dist --overwrite --asar"
+    "pack": "npx -y electron-packager . NepalQuiz --platform=win32 --arch=x64 --out=dist --overwrite --asar"
   },
   "keywords": [],
   "author": "",
